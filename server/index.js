@@ -1,5 +1,7 @@
 const express = require("express");
 const cors = require("cors");
+const { Novu } = require("@novu/node");
+const novu = new Novu("MY_NOVU_API_KEY");
 const app = express();
 const PORT = 4000;
 const users = []; //holds all users
@@ -27,6 +29,15 @@ app.post("/api/create/thread", async (req, res) => {
         userId,
         replies: [],
         likes: new Array(),
+    });
+
+    await novu.topics.create({
+        key: threadId,
+        name: thread
+    });
+
+    await novu.topics.addSubscribers(threadId, {
+        subscribers: [userId],
     });
 
     res.json({
@@ -79,6 +90,10 @@ app.post("/api/create/reply", async (req, res) => {
         name: user[0].username,
         text: reply,
     });
+
+    await novu.trigger("forum-system-notification-UOvqTNxKO", {
+        to: [{ type: "Topic", topicKey: id }],
+    });
     
     res.json({
         message: "Response added successfully!",
@@ -96,6 +111,8 @@ app.post("/api/register", async (req, res) => {
 
     if(result.length === 0){
         const newUser = { id, email, password, username };
+
+        await novu.subscribers.identify(id, { email: email });
 
         //add the usr to the array
         users.push(newUser);
